@@ -35,12 +35,12 @@ float ASW_Aggre(IplImage * _Img_L, IplImage * _Img_R, int x, int y, int radius, 
 			if (j < 0 || j >= height || i < 0 || i >= width || i-d < 0 || i-d >= width)
 				continue;
 			int addr_L = AddrGet(i, j, WidthStep, nChan);
-			int addr_R = AddrGet(x, y, WidthStep, nChan);
+			int addr_R = AddrGet(i-d, j, WidthStep, nChan);
 			int Data_L = (unsigned char)_Img_L->imageData[addr_L];
 			int Data_R = (unsigned char)_Img_L->imageData[addr_R];
-			float wieght = WeiGet(Data_L, Data_R, 5.0f);
+			float wieght = WeiGet(Data_L, Data_R, 10.0f);
 			num+= wieght;
-			cost += (alpha*min_Ben(AD_Cost(_Img_L, _Img_R, i, j, d),10)+ (1-alpha)*min_Ben(Census_Cost(_Img_L, _Img_R, i, j, d,3),10))*wieght;
+			cost += (alpha*AD_Cost(_Img_L, _Img_R, i, j, d)+ (1-alpha)*Census_Cost(_Img_L, _Img_R, i, j, d,3))*wieght;
 
 		}
 	}

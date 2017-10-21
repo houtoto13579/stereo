@@ -198,8 +198,8 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
-	cvShowImage("Output", disp_Img);
-	cvWaitKey(0); // wait
+	//cvShowImage("Output", disp_Img);
+	//cvWaitKey(0); // wait
 
 #endif
 
