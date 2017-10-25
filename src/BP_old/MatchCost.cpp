@@ -30,7 +30,7 @@ int AD_Cost(IplImage * _Img_L, IplImage * _Img_R,int x,int y,int d) {
 
 		Cost = +abs(_Img_L->imageData[Addr_Img_L]- _Img_R->imageData[Addr_Img_R]);
 	}
-	Cost = Cost / nChans;
+
 
 	return Cost;
 	//cvReleaseImage(&Img_L_);

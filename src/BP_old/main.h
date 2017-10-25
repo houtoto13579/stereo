@@ -7,7 +7,6 @@
 //#include <conio.h>
 #include <cmath>
 #include <iostream>
-#include <fstream>
 #include <algorithm>    // std::min
 
 //==========OPENCV===================

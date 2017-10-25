@@ -11,10 +11,10 @@ int Iteration = 2;
 extern IplImage * Img_Disp_Pre[5];
 extern IplImage * Img_L_Pre[5];
 extern IplImage * Img_R_Pre[5];
-extern int f;
+
 
 void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
-	int f = 1;
+	int f=1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
 	int widthstep = Left_Img->widthStep;
@@ -87,14 +87,14 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 17, d);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 13, d);
 				}
 				else{
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
 
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 10, d)+ Temporal_Cost(i, j, d, Left_Img);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 13, d);
 				}
 			}
 		}
@@ -385,17 +385,16 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
 			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
+
 	}
-
-
+	cvShowImage("Output", disp_Img);
+	cvWaitKey(0);
 #endif
-
 	delete[]Cost_Buf;
 	delete[]Mes_L_Buf;
 	delete[]Mes_R_Buf;
 	delete[]Mes_U_Buf;
 	delete[]Mes_D_Buf;
-
 }
 
 void BP_Update(float *Mes_A, float *Mes_B, float *Mes_C, float *Cost, float *Mes_Out, float weight_A, float weight_B, float weight_C, float lamda,int ndisp) {
@@ -438,8 +437,7 @@ int BP_Disp_Deter(float *Mes_A, float *Mes_B, float *Mes_C, float *Mes_D, float 
 	}
 	return min_d;
 }
-
-
+/*
 inline float Temporal_Cost(int index_x, int index_y, int d, IplImage* _Img) {
 
 	float weight;
@@ -489,7 +487,6 @@ inline float Temproal_Sim(int index_x, int index_y, int radius, IplImage* _Img) 
 
 	return similarity;
 }
-
 
 void ICCV2010(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img, int ndisp) {
 	int width = Left_Img->width;
@@ -545,7 +542,9 @@ void ICCV2010(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img, int n
 			}
 
 			disp_Img->imageData[addr_disp_Img] = disp_scale*min_d;
-
+			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
+			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
 }
+*/

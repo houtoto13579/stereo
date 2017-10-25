@@ -15,6 +15,7 @@
 #include "src/frame.h"
 #include "src/filter.h"
 #include "src/frame_cmotion.h"
+#include "src/BP_motion.h"
 
 // Include from toolkit file (which have to link png++ lib--> you could check in CmakeList.txt) //
 // #include <math.h>
@@ -42,7 +43,7 @@
 #define CLEAN 1000
 #define SPEED 1
 
-#define FILTERSIZE 7
+#define FILTERSIZE 3
 
 #define DISP_STEREO   0
 #define DISP_WINDOW   1
@@ -56,6 +57,8 @@
 #define DISP_WINDOW_COLOR_BFRAME_OPT 9
 #define DISP_WINDOW_COLORASW_BFRAME_OPT 19
 #define NEW_BP_BFRAME_OPT 20
+#define NEW_BP 21
+#define NEW_BP_TEMPORAL 22
 #define DISP_WINDOW_CEN_BFRAME_OPT  10
 #define DISP_WINDOW_BP_BFRAME_OPT  11
 #define DISP_TRUE_AFFINE 12
@@ -72,11 +75,12 @@ bool autoParsing = false;
 //========= Left or Right =========//
 bool isLeft = true;
 //===========  Filter =============//
-bool useFilter=true;
+bool useFilter=false;
 bool refineUseFilter = true;
 //=========== Compare =============//
 bool Compare = true;
-int compareTolerance = 2*(256/DEPTH);
+int compareTolerance = 1*(256/DEPTH);
+bool deleteLeftDiscont = true; //true while make left BSIZE 
 //=========  Directory ============//
 bool outputOrig=true;
 //TODO: Directory should change accordingly
@@ -94,15 +98,16 @@ string img_compare_directory = "input/Tsukuba/disparity_maps/";
 */
 //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
 
-string img_directory = "input/Dcb/book/";
+string img_directory = "input/Dcb/temple/";
 string img_left = "left/";
 string img_right = "right/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Dcb/"+(child_directory)+"test_BP_2/";
+string img_output_directory = "output/Dcb/"+(child_directory)+"temple/test_BP_new/";
 string img_discontinue_directory = "";
-string img_compare_directory = "input/Dcb/book/ground/";
+//string img_discontinue_directory = "input/Dcb/temple/occlution/";
+string img_compare_directory = "input/Dcb/temple/ground/";
 
 //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
 /*
@@ -143,6 +148,8 @@ string img_compare_directory = "ALSO, CHANGE THE CVLOADTYPE, FILENAME below as w
  * DISP_WINDOW_COLOR_BFRAME_OPT * ->output frame
  * DISP_WINDOW_COLORASW_BFRAME_OPT * ->output frame
  * NEW_BP_BFRAME_OPT			*
+ * NEW_BP						*
+ * NEW_BP_TEMPORAL				*
  * DISP_WINDOW_CEN_BFRAME_OPT   *
  * DISP_WINDOW_BP_BFRAME_OPT    *
  * DISP_TRUE_AFFINE   			*
@@ -150,7 +157,7 @@ string img_compare_directory = "ALSO, CHANGE THE CVLOADTYPE, FILENAME below as w
  * TEST_AFFINE					*   
  ******************************/
 
-int type = NEW_BP_BFRAME_OPT;
+int type = NEW_BP;
 
 //========== Error_Rate ===========//
 
@@ -182,7 +189,7 @@ int main(int argc, char** argv){
 	outfile.open(fileRecordChar, ios_base::app);
 	outfile <<"type,"<<type<<endl;
 	outfile <<"depth,"<<DEPTH<<endl;
-	outfile <<"clean,"<<CLEAN<<endl;
+	outfile <<"compareTolerance,"<<compareTolerance<<endl;
 	outfile <<"speed,"<<SPEED<<endl;
 	outfile <<"boxsize,"<<BSIZE<<endl;
 	outfile <<"nsize,"<<NSIZE<<endl;
@@ -469,12 +476,19 @@ int main(int argc, char** argv){
 			}
 			new_bp_frame_optical(imageL,imageR,imageD,imageL_pre,imageD_pre, imageD_refine, DEPTH,true,BSIZE,isLeft,file_iter, CLEAN, SPEED, 2, NSIZE);
 		}
-		else if (type == DISP_WINDOW_CEN_BFRAME_OPT){
+		else if (type == NEW_BP){
 			if(usrGrey){
 				Grey(imageL);
 				Grey(imageR);
 			}
-			disp_stereo_census_big_frame_optical(imageL,imageR,imageD,imageL_pre,imageD_pre,DEPTH,true,BSIZE,isLeft,file_iter, CLEAN, SPEED, false);
+			new_bp(imageL,imageR,imageD,imageL_pre,imageD_pre, imageD_refine, DEPTH,true,BSIZE,isLeft,file_iter, CLEAN, SPEED, 2, NSIZE);
+		}
+		else if (type == NEW_BP_TEMPORAL){
+			if(usrGrey){
+				Grey(imageL);
+				Grey(imageR);
+			}
+			new_bp_temporal(imageL,imageR,imageD,imageL_pre,imageD_pre, imageD_refine, DEPTH,true,BSIZE,isLeft,file_iter, CLEAN, SPEED, 2, NSIZE);
 		}
 		// else if (type == DISP_WINDOW_BP_BFRAME_OPT){
 		// 	if(usrGrey){
@@ -635,12 +649,10 @@ int main(int argc, char** argv){
 			double frame_error;
 			for(int i=0;i<imageD->height;i+=JUMP){
 				for(int j=0;j<imageD->widthStep;j=j+3*JUMP){
-					
-					//cout<<(int)(imageDC->imageData[i*imageDC->widthStep+j])<<endl; 
-					if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0){
+					if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0 && !(j<(BSIZE*3) + 30 && deleteLeftDiscont)){
 						total_pixel++;
 						int colorint=22;
-						int dif=abs((imageD->imageData[i*imageD->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j/3]));	
+						int dif=abs((imageD->imageData[i*imageD->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*(imageCP->nChannels)/3]));	
 						if(dif>compareTolerance){
 							
 							colorint=200;
@@ -650,6 +662,7 @@ int main(int argc, char** argv){
 							error_pixel++;
 						}	
 					}
+					// if j<BSIZE*3 && deleteLeftDiscont
 					else{
 						imageD->imageData[i*imageD->widthStep+j] = 0;
 			          	imageD->imageData[i*imageD->widthStep+j+1] = 200;
@@ -677,13 +690,11 @@ int main(int argc, char** argv){
 				double refine_error_pixel = 0;
 				for(int i=0;i<imageD_refine->height;i+=JUMP){
 					for(int j=0;j<imageD_refine->widthStep;j=j+3*JUMP){
-						
-						if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0){
+						if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0 && !(j<BSIZE*3 +30 && deleteLeftDiscont)){
 							refine_total_pixel++;
 							int colorint=22;
-							int dif=abs((imageD_refine->imageData[i*imageD_refine->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*imageCP->nChannels/3]));	
-							if(dif>compareTolerance){
-								
+							int dif=abs((imageD_refine->imageData[i*imageD_refine->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*(imageCP->nChannels)/3]));	
+							if(dif>compareTolerance){				
 								colorint=200;
 								imageD_refine->imageData[i*imageD->widthStep+j] = 0;
 								imageD_refine->imageData[i*imageD->widthStep+j+1] = 0;

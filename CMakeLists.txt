@@ -3,7 +3,6 @@ project( atest )
 include_directories( src )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse3")
-
 IF( NOT CMAKE_BUILD_TYPE )
    SET( CMAKE_BUILD_TYPE Release ... FORCE )
 ENDIF()
@@ -21,6 +20,7 @@ add_executable(
 	src/frame.h
 	src/filter.h
 	src/frame_cmotion.h
+	src/BP_motion.h
 	${BP_SRC}
 )
 ## Link libraries

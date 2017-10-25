@@ -14,7 +14,7 @@ extern IplImage * Img_R_Pre[5];
 extern int f;
 
 void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
-	int f = 1;
+
 	int width = Left_Img->width;
 	int height = Left_Img->height;
 	int widthstep = Left_Img->widthStep;
@@ -382,19 +382,12 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 			}
 
 			disp_Img->imageData[addr_disp_Img] =disp_scale*BP_Disp_Deter(Mes_L_Pixel, Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, weight_A, weight_B,weight_C, weight_D, ndisp);
-			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
-			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
 
 
 #endif
 
-	delete[]Cost_Buf;
-	delete[]Mes_L_Buf;
-	delete[]Mes_R_Buf;
-	delete[]Mes_U_Buf;
-	delete[]Mes_D_Buf;
 
 }
 
