@@ -13,7 +13,7 @@ extern IplImage * Img_L_Pre[5];
 extern IplImage * Img_R_Pre[5];
 extern int f;
 
-void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
+void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, int bsize) {
 	int f = 1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
@@ -60,14 +60,8 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 	Mes_U_Pixel = new float[ndisp];
 	Mes_D_Pixel = new float[ndisp];
 	Mes_Result_Pixel = new float[ndisp];
-
-#ifdef Tile_BP
-
-
-
-#endif
-
-#ifndef Tile_BP
+	
+	#ifndef Tile_BP
 	
 	Buf_size = ndisp*width*height;
 
@@ -87,14 +81,14 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 17, d);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d);
 				}
 				else{
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
 
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 10, d)+ Temporal_Cost(i, j, d, Left_Img);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d)+ Temporal_Cost(i, j, d, Left_Img);
 				}
 			}
 		}
@@ -386,9 +380,7 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
-
-
-#endif
+	#endif
 
 	delete[]Cost_Buf;
 	delete[]Mes_L_Buf;

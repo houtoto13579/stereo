@@ -7,16 +7,18 @@
 #include "filter.h"
 #include "BP/Optimization.h"
 
-#define PREROBUST 50 //original 50
-#define FDF_CONSTANT 0.15 //orginally 50 <- hahaha
-#define FDF_CONSTANT_ASW 0.15 //best 0.1
-#define FDF_GAMMA 0.001 //best 0.01
+#define BP_PREROBUST 50 //original 50
+#define BP_FDF_CONSTANT 0.15 
+#define BP_FDF_CONSTANT_ASW 0.15 //best 0.1 
+#define BP_FDF_GAMMA 0.001 //best 0.01
 
 using namespace std;
 using namespace cv;
 
+
+
 float g_temporal(int preDisp, int curDisp, float var=12){
-    if(preDisp=-1){
+    if(preDisp==-1){
         return 1;
     }
     float ans;
@@ -28,20 +30,25 @@ float g_temporal(int preDisp, int curDisp, float var=12){
 }
 
 void new_bp(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImage *imageL_pre,IplImage *imageD_pre, IplImage *imageD_refine, int depth,bool window=false,int bsize=3,bool isLeft=true, int iter=1, int clean=10, int speed=1, int method=1, int nsize=5){
-	BP(Left_Img,Right_Img,disp_Img,depth);
+	BP(Left_Img,Right_Img,disp_Img,depth,bsize);
 }
 
 void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImage *imageL_pre,IplImage *imageD_pre, IplImage *imageD_refine, int depth,bool window=false,int bsize=3,bool isLeft=true, int iter=1, int clean=10, int speed=1, int method=1, int nsize=5){
-	//BP(imageL,imageR,imageD,depth);
+	//====================================AD_Cost
+	//============Cost Refill=============
+	//====================================
 	
-
-	int ndisp=depth;
+	int lamda = 2;
+	int Iteration = 2;
+	int f=1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
-	int widthstep = Left_Img->widthStep; // more, nChannels times the width
+	int widthstep = Left_Img->widthStep;
+	
 	int widthstep_Disp = disp_Img->widthStep;
 	int nchan_Disp = disp_Img->nChannels;
 
+	int ndisp=depth;
 	int disp_scale = 256 / ndisp;
 
 	float *Cost_Buf;
@@ -64,6 +71,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 
 	cvCvtColor(Left_Img, Img_L_Gary, CV_RGB2GRAY);
 	cvCvtColor(Right_Img, Img_R_Gary, CV_RGB2GRAY);
+
 	Mat flow;
 	bool usingPreImg=true;
 	//judge if it is the first frame
@@ -73,8 +81,9 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
     else{
         flow = get_optical(Left_Img, imageL_pre);
     }
-	
+
 	float *Cost_Pixel;
+	float *Temporal_Cost_Pixel;
 	float *Mes_L_Pixel;
 	float *Mes_R_Pixel;
 	float *Mes_U_Pixel;
@@ -82,11 +91,20 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 	float *Mes_Result_Pixel;
 
 	Cost_Pixel  = new float[ndisp];
+	Temporal_Cost_Pixel = new float[ndisp];
 	Mes_L_Pixel = new float[ndisp];
 	Mes_R_Pixel = new float[ndisp];
 	Mes_U_Pixel = new float[ndisp];
 	Mes_D_Pixel = new float[ndisp];
 	Mes_Result_Pixel = new float[ndisp];
+
+	#ifdef Tile_BP
+
+
+
+	#endif
+
+	#ifndef Tile_BP
 	
 	Buf_size = ndisp*width*height;
 
@@ -95,17 +113,14 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 	Mes_R_Buf = new float[Buf_size];
 	Mes_U_Buf = new float[Buf_size];
 	Mes_D_Buf = new float[Buf_size];
-	//
-
-
-	//====================================AD_Cost
+	//====================================
 	//============Cost Refill=============
 	//====================================
 	int BSIZE = bsize;
 	int NSIZE = nsize;
 	float alpha= 0.2;
 	float gamma = 10;
-	int preRobust = PREROBUST;
+	int preRobust = BP_PREROBUST;
 	//Testing Two Method Avg!!!
 	double preWeightSum=0;
 	double preWeightCount=0;
@@ -159,7 +174,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					if(preCount==0)
 						preWeight = 0;
 					else{
-						preWeight = FDF(preDifSum,preCount,FDF_CONSTANT,FDF_GAMMA);
+						preWeight = FDF(preDifSum,preCount,BP_FDF_CONSTANT,BP_FDF_GAMMA);
 						preWeightCount++;
 					}
 				}
@@ -168,7 +183,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					if(weight_wall==0)
 						preWeight = 0;
 					else{
-						preWeight = FDF(momentum,weight_wall,FDF_CONSTANT_ASW,FDF_GAMMA);
+						preWeight = FDF(momentum,weight_wall,BP_FDF_CONSTANT_ASW,BP_FDF_GAMMA);
 						preWeightCount++;
 					}
 				}
@@ -181,108 +196,240 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 			// 	cerr<<preWeight<<endl;
 			for (int d = 0;d < ndisp;++d) {
 				int Buf_addr = (i*width + j/3)*ndisp + d;
-				Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, j/3, i, 3, d) + preWeight*(min(preRobust,abs(d-preDisp)));
+				if (j/3 < d)
+					Cost_Buf[Buf_addr] = 999;
+				else
+					Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, j/3, i, bsize, d)+ preWeight*(min(preRobust,abs(d-preDisp)));
 			}
 		}
 	}
-	//=======================From Left to Right===================
-	for (int j = 0;j < height;++j) {
-		for (int i = 0;i < width-1;++i) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width+i)*ndisp + d;
-				Cost_Pixel[d]  = Cost_Buf[addr_buf];
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
-				
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_L_Pixel, Mes_U_Pixel, Mes_D_Pixel,Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C,8,ndisp);
+	//cerr<<"\n"<<Cost_Buf[0]<<endl;
+	for (int iter = 0;iter < Iteration;++iter) {
+		//=======================From Left to Right===================
+		for (int j = 0;j < height;++j) {
+			for (int i = 0;i < width - 1;++i) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
 
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i+1)*ndisp + d;
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (i == 0) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (j == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (j == height - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
 
-				Mes_L_Buf[addr_buf]= Mes_Result_Pixel[d];
+				BP_Update(Mes_L_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i + 1)*ndisp + d;
+
+					Mes_L_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
 			}
 		}
-	}
-	//=======================From Right to Left===================
-	for (int j = 0;j < height;++j) {
-		for (int i = width-1;i >=1;--i) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+		//=======================From Right to Left===================
+		for (int j = 0;j < height;++j) {
+			for (int i = width - 1;i >= 1;--i) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
 
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (i == width - 1) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (j == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (j == height - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+				BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i - 1)*ndisp + d;
+
+					Mes_R_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
 			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i-1)*ndisp + d;
-
-				Mes_R_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
 		}
-	}
 
-	//=======================From Up to Down===================
+		//=======================From Up to Down===================
+
+		for (int i = 0;i < width;++i) {
+			for (int j = 0;j < height - 1;++j) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (j == 0) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (i == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (i == width - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+
+				BP_Update(Mes_U_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = ((j + 1)*width + i)*ndisp + d;
+
+					Mes_U_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
+			}
+		}
+		for (int i = 0;i < width;++i) {
+			for (int j = height - 1;j >= 1;--j) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (j == height - 1) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (i == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (i == width - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+
+				BP_Update(Mes_D_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = ((j - 1)*width + i)*ndisp + d;
+
+					Mes_D_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
+			}
+		}
 	
-	for (int i = 0;i < width;++i) {
-		for (int j = 0;j < height-1;++j) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = ((j+1)*width + i)*ndisp + d;
-
-				Mes_U_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
-		}
+	
 	}
-
-	for (int i = 0;i < width;++i) {
-		for (int j = height - 1;j >= 1;--j) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
-
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = ((j - 1)*width + i)*ndisp + d;
-
-				Mes_D_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
-		}
-	}
-
 	for (int i = 0;i < width;++i) {
 		for (int j = height - 1;j >= 1;--j) {
 			for (int d = 0;d < ndisp;++d) {
@@ -298,25 +445,73 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 			weight_B =1;
 			weight_C =1;
 			weight_D =1;
-			
+
+			int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_d = AddrGet(i , j+1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			unsigned char color_p;
+			unsigned char color_q;
+			if (j == 0) {
+				weight_C = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_u];
+				weight_C = WeiGet(color_p, color_q, 5);
+			}
+			if (j == height-1) {
+				weight_D = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_d];
+				weight_D = WeiGet(color_p, color_q, 5);
+			}
+			if (i == 0) {
+				weight_A = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_l];
+				weight_A = WeiGet(color_p, color_q, 5);
+			}
+			if (i == width - 1) {
+				weight_B = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_r];
+				weight_B = WeiGet(color_p, color_q, 5);
+			}
+
 			disp_Img->imageData[addr_disp_Img] =disp_scale*BP_Disp_Deter(Mes_L_Pixel, Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, weight_A, weight_B,weight_C, weight_D, ndisp);
 			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
 			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
-	//cvShowImage("Output", disp_Img);
-	//cvWaitKey(0); // wait
+	delete[]Cost_Buf;
+	delete[]Mes_L_Buf;
+	delete[]Mes_R_Buf;
+	delete[]Mes_U_Buf;
+	delete[]Mes_D_Buf;
+	#endif
 }
 
 void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImage *imageL_pre,IplImage *imageD_pre, IplImage *imageD_refine, int depth,bool window=false,int bsize=3,bool isLeft=true, int iter=1, int clean=10, int speed=1, int method=1, int nsize=5){
 	//BP(imageL,imageR,imageD,depth);
-	int ndisp=depth;
+	int lamda = 2;
+	int Iteration = 2;
+	int f=1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
-	int widthstep = Left_Img->widthStep; // more, nChannels times the width
+	int widthstep = Left_Img->widthStep;
+	
 	int widthstep_Disp = disp_Img->widthStep;
 	int nchan_Disp = disp_Img->nChannels;
 
+	int ndisp=depth;
 	int disp_scale = 256 / ndisp;
 
 	float *Cost_Buf;
@@ -339,6 +534,7 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 
 	cvCvtColor(Left_Img, Img_L_Gary, CV_RGB2GRAY);
 	cvCvtColor(Right_Img, Img_R_Gary, CV_RGB2GRAY);
+
 	Mat flow;
 	bool usingPreImg=true;
 	//judge if it is the first frame
@@ -348,8 +544,9 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
     else{
         flow = get_optical(Left_Img, imageL_pre);
     }
-	
+
 	float *Cost_Pixel;
+	float *Temporal_Cost_Pixel;
 	float *Mes_L_Pixel;
 	float *Mes_R_Pixel;
 	float *Mes_U_Pixel;
@@ -357,11 +554,20 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 	float *Mes_Result_Pixel;
 
 	Cost_Pixel  = new float[ndisp];
+	Temporal_Cost_Pixel = new float[ndisp];
 	Mes_L_Pixel = new float[ndisp];
 	Mes_R_Pixel = new float[ndisp];
 	Mes_U_Pixel = new float[ndisp];
 	Mes_D_Pixel = new float[ndisp];
 	Mes_Result_Pixel = new float[ndisp];
+
+	#ifdef Tile_BP
+
+
+
+	#endif
+
+	#ifndef Tile_BP
 	
 	Buf_size = ndisp*width*height;
 
@@ -370,10 +576,7 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 	Mes_R_Buf = new float[Buf_size];
 	Mes_U_Buf = new float[Buf_size];
 	Mes_D_Buf = new float[Buf_size];
-	//
-
-
-	//====================================AD_Cost
+	//====================================
 	//============Cost Refill=============
 	//====================================
 	int BSIZE = bsize;
@@ -412,108 +615,241 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 			}
 			for (int d = 0;d < ndisp;++d) {
 				int Buf_addr = (i*width + j/3)*ndisp + d;
-				Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, j/3, i, 3, d)*g_temporal(preDisp,d);
-			}
-		}
-	}
-	//=======================From Left to Right===================
-	for (int j = 0;j < height;++j) {
-		for (int i = 0;i < width-1;++i) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width+i)*ndisp + d;
-				Cost_Pixel[d]  = Cost_Buf[addr_buf];
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
 				
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_L_Pixel, Mes_U_Pixel, Mes_D_Pixel,Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C,8,ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i+1)*ndisp + d;
-
-				Mes_L_Buf[addr_buf]= Mes_Result_Pixel[d];
+				if (j/3 < d)
+					Cost_Buf[Buf_addr] = 999;
+				else
+					Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, j/3, i, bsize, d)*g_temporal(preDisp,d);
 			}
 		}
 	}
-	//=======================From Right to Left===================
-	for (int j = 0;j < height;++j) {
-		for (int i = width-1;i >=1;--i) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+	//cerr<<"\n"<<Cost_Buf[0]<<endl;
+	for (int iter = 0;iter < Iteration;++iter) {
+		//=======================From Left to Right===================
+		for (int j = 0;j < height;++j) {
+			for (int i = 0;i < width - 1;++i) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
 
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (i == 0) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (j == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (j == height - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+
+				BP_Update(Mes_L_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i + 1)*ndisp + d;
+
+					Mes_L_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
 			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i-1)*ndisp + d;
-
-				Mes_R_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
 		}
-	}
+		//=======================From Right to Left===================
+		for (int j = 0;j < height;++j) {
+			for (int i = width - 1;i >= 1;--i) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
 
-	//=======================From Up to Down===================
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (i == width - 1) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (j == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (j == height - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+				BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i - 1)*ndisp + d;
+
+					Mes_R_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
+			}
+		}
+
+		//=======================From Up to Down===================
+
+		for (int i = 0;i < width;++i) {
+			for (int j = 0;j < height - 1;++j) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
+
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (j == 0) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_u];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (i == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (i == width - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+
+				BP_Update(Mes_U_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = ((j + 1)*width + i)*ndisp + d;
+
+					Mes_U_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
+			}
+		}
+		for (int i = 0;i < width;++i) {
+			for (int j = height - 1;j >= 1;--j) {
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = (j*width + i)*ndisp + d;
+					Cost_Pixel[d] = Cost_Buf[addr_buf];
+					Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
+
+					Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
+					Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
+				}
+				weight_A = 1;
+				weight_B = 1;
+				weight_C = 1;
+
+				int addr_d = AddrGet(i, j + 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+				unsigned char color_p;
+				unsigned char color_q;
+				if (j == height - 1) {
+					weight_A = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_d];
+					weight_A = WeiGet(color_p, color_q, 5);
+				}
+				if (i == 0) {
+					weight_B = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_l];
+					weight_B = WeiGet(color_p, color_q, 5);
+				}
+				if (i == width - 1) {
+					weight_C = 0;
+				}
+				else {
+					color_p = (unsigned char)Img_L_Gary->imageData[addr_p];
+					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
+					weight_C = WeiGet(color_p, color_q, 5);
+				}
+
+				BP_Update(Mes_D_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
+
+				for (int d = 0;d < ndisp;++d) {
+					int addr_buf = ((j - 1)*width + i)*ndisp + d;
+
+					Mes_D_Buf[addr_buf] = Mes_Result_Pixel[d];
+				}
+
+			}
+		}
 	
-	for (int i = 0;i < width;++i) {
-		for (int j = 0;j < height-1;++j) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_U_Pixel[d] = Mes_U_Buf[addr_buf];
-
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = ((j+1)*width + i)*ndisp + d;
-
-				Mes_U_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
-		}
+	
 	}
-
-	for (int i = 0;i < width;++i) {
-		for (int j = height - 1;j >= 1;--j) {
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = (j*width + i)*ndisp + d;
-				Cost_Pixel[d] = Cost_Buf[addr_buf];
-				Mes_D_Pixel[d] = Mes_D_Buf[addr_buf];
-
-				Mes_L_Pixel[d] = Mes_L_Buf[addr_buf];
-				Mes_R_Pixel[d] = Mes_R_Buf[addr_buf];
-			}
-			weight_A = 1;
-			weight_B = 1;
-			weight_C = 1;
-			BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, 8, ndisp);
-
-			for (int d = 0;d < ndisp;++d) {
-				int addr_buf = ((j - 1)*width + i)*ndisp + d;
-
-				Mes_D_Buf[addr_buf] = Mes_Result_Pixel[d];
-			}
-
-		}
-	}
-
 	for (int i = 0;i < width;++i) {
 		for (int j = height - 1;j >= 1;--j) {
 			for (int d = 0;d < ndisp;++d) {
@@ -529,14 +865,58 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 			weight_B =1;
 			weight_C =1;
 			weight_D =1;
-			
+
+			int addr_u = AddrGet(i, j - 1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_d = AddrGet(i , j+1, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_l = AddrGet(i - 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_r = AddrGet(i + 1, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			int addr_p = AddrGet(i, j, Img_L_Gary->widthStep, Img_L_Gary->nChannels);
+			unsigned char color_p;
+			unsigned char color_q;
+			if (j == 0) {
+				weight_C = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_u];
+				weight_C = WeiGet(color_p, color_q, 5);
+			}
+			if (j == height-1) {
+				weight_D = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_d];
+				weight_D = WeiGet(color_p, color_q, 5);
+			}
+			if (i == 0) {
+				weight_A = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_l];
+				weight_A = WeiGet(color_p, color_q, 5);
+			}
+			if (i == width - 1) {
+				weight_B = 0;
+			}
+			else {
+				color_p = Img_L_Gary->imageData[addr_p];
+				color_q = Img_L_Gary->imageData[addr_r];
+				weight_B = WeiGet(color_p, color_q, 5);
+			}
+
 			disp_Img->imageData[addr_disp_Img] =disp_scale*BP_Disp_Deter(Mes_L_Pixel, Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, weight_A, weight_B,weight_C, weight_D, ndisp);
 			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
 			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
 		}
 	}
-	//cvShowImage("Output", disp_Img);
-	//cvWaitKey(0); // wait
+	delete[]Cost_Buf;
+	delete[]Mes_L_Buf;
+	delete[]Mes_R_Buf;
+	delete[]Mes_U_Buf;
+	delete[]Mes_D_Buf;
+	#endif
 }
 
 #endif

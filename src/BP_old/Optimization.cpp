@@ -13,7 +13,7 @@ extern IplImage * Img_L_Pre[5];
 extern IplImage * Img_R_Pre[5];
 
 
-void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
+void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, int bsize=13) {
 	int f=1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
@@ -61,13 +61,13 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 	Mes_D_Pixel = new float[ndisp];
 	Mes_Result_Pixel = new float[ndisp];
 
-#ifdef Tile_BP
+	#ifdef Tile_BP
 
 
 
-#endif
+	#endif
 
-#ifndef Tile_BP
+	#ifndef Tile_BP
 	
 	Buf_size = ndisp*width*height;
 
@@ -87,14 +87,14 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 13, d);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d);
 				}
 				else{
 					if (i < d)
 						Cost_Buf[Buf_addr] = 999;
 					else
 
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, 13, d);
+						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d);
 				}
 			}
 		}
@@ -389,7 +389,7 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp) {
 	}
 	cvShowImage("Output", disp_Img);
 	cvWaitKey(0);
-#endif
+	#endif
 	delete[]Cost_Buf;
 	delete[]Mes_L_Buf;
 	delete[]Mes_R_Buf;

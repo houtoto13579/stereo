@@ -135,7 +135,7 @@ void SpatiotemporalStereo(IplImage * _Img_L, IplImage * _Img_R,IplImage *_disp_I
 		}
 	}
 	*/
-	BP(_Img_L, _Img_R, _disp_Img, ndisp);
+	//BP(_Img_L, _Img_R, _disp_Img, ndisp);
 	//ICCV2010(_Img_L, _Img_R, _disp_Img, ndisp);
 	//WMode_F(_disp_Img, Img_L_Gary, _disp_Img_F, 3, 256);
 	//cvCopy(_disp_Img_F, _disp_Img, NULL);
