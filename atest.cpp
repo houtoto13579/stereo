@@ -32,7 +32,7 @@
 
 //TODO: DEPTH
 #define DEPTH 64
-#define BSIZE 5
+#define BSIZE 17
 #define NSIZE 3
 #define JUMP 1
 #define START 1
@@ -43,7 +43,7 @@
 #define CLEAN 1000
 #define SPEED 1
 
-#define FILTERSIZE 3
+#define FILTERSIZE 5
 
 #define DISP_STEREO   0
 #define DISP_WINDOW   1
@@ -75,7 +75,7 @@ bool autoParsing = false;
 //========= Left or Right =========//
 bool isLeft = true;
 //===========  Filter =============//
-bool useFilter=false;
+bool useFilter=true;
 bool refineUseFilter = true;
 //=========== Compare =============//
 bool Compare = true;
@@ -97,6 +97,7 @@ string img_discontinue_directory = "input/Tsukuba/discontinuity_maps/";
 string img_compare_directory = "input/Tsukuba/disparity_maps/";
 */
 //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+string method = "dcb";
 
 string img_directory = "input/Dcb/temple/";
 string img_left = "left/";
@@ -104,9 +105,9 @@ string img_right = "right/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Dcb/"+(child_directory)+"temple/test_BP_new/";
-string img_discontinue_directory = "";
-//string img_discontinue_directory = "input/Dcb/temple/occlution/";
+string img_output_directory = "output/Dcb/"+(child_directory)+"temple/B17/BP_opt(A0_15)/";
+//string img_discontinue_directory = "";
+string img_discontinue_directory = "input/Dcb/temple/occlution/";
 string img_compare_directory = "input/Dcb/temple/ground/";
 
 //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
@@ -157,7 +158,7 @@ string img_compare_directory = "ALSO, CHANGE THE CVLOADTYPE, FILENAME below as w
  * TEST_AFFINE					*   
  ******************************/
 
-int type = NEW_BP;
+int type = NEW_BP_BFRAME_OPT;
 
 //========== Error_Rate ===========//
 
@@ -549,6 +550,10 @@ int main(int argc, char** argv){
 			}
 			testing_optical(imageL, imageD, imageL_pre, file_iter, SPEED);
 		}
+
+
+		//post Processing
+
 		JointWMF jj;
 		Mat matL = cvarrToMat(imageL);
 		if(useFilter){
@@ -619,7 +624,7 @@ int main(int argc, char** argv){
 			*/
 			
 			// for DCB
-			string fileDC = img_discontinue_directory + "left/TL"+ img_name + ".png";
+			string fileDC = img_discontinue_directory + "TL_MASK"+ img_name + ".png";
 			string fileCP = img_compare_directory + "left/TL" + img_name + ".png";
 			
 			char filenameDC[1024];
@@ -649,7 +654,7 @@ int main(int argc, char** argv){
 			double frame_error;
 			for(int i=0;i<imageD->height;i+=JUMP){
 				for(int j=0;j<imageD->widthStep;j=j+3*JUMP){
-					if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0 && !(j<(BSIZE*3) + 30 && deleteLeftDiscont)){
+					if((int)(imageDC->imageData[i*imageDC->widthStep+j*(imageDC->nChannels)/3]) != 0 && !(j<(BSIZE*3) + 30 && deleteLeftDiscont)){
 						total_pixel++;
 						int colorint=22;
 						int dif=abs((imageD->imageData[i*imageD->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*(imageCP->nChannels)/3]));	
@@ -685,12 +690,12 @@ int main(int argc, char** argv){
 			cerr<<"Error: "<< frame_error*100<<"%;";
 
 			double refine_frame_error = 0;
-			if(imageD_refine!=NULL){
+			if(imageD_refine!=NULL && imageD_refine!=0){
 				double refine_total_pixel = 0;
 				double refine_error_pixel = 0;
 				for(int i=0;i<imageD_refine->height;i+=JUMP){
 					for(int j=0;j<imageD_refine->widthStep;j=j+3*JUMP){
-						if((int)(imageDC->imageData[i*imageDC->widthStep+j/3]) != 0 && !(j<BSIZE*3 +30 && deleteLeftDiscont)){
+						if((int)(imageDC->imageData[i*imageDC->widthStep+j*(imageDC->nChannels)/3]) != 0 && !(j<BSIZE*3 +30 && deleteLeftDiscont)){
 							refine_total_pixel++;
 							int colorint=22;
 							int dif=abs((imageD_refine->imageData[i*imageD_refine->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*(imageCP->nChannels)/3]));	
