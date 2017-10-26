@@ -6,6 +6,9 @@ using namespace cv;
 IplImage * Img_Disp_Pre[5];
 IplImage * Img_L_Pre[5];
 IplImage * Img_R_Pre[5];
+
+IplImage * Img_L_Gary;
+IplImage * Img_R_Gary;
 int       f;
 
 void Occlusion_Mask(IplImage * _Img_GT, IplImage * _Img_GT_R, IplImage * _Img_GT_Mask,int ndisp) {
@@ -98,8 +101,8 @@ void SpatiotemporalStereo(IplImage * _Img_L, IplImage * _Img_R,IplImage *_disp_I
 
 	float disp_scale = 256 /(float)ndisp;
 
-	IplImage * Img_L_Gary = cvCreateImage(cvGetSize(_Img_L), _Img_L->depth, 1);
-	IplImage * Img_R_Gary = cvCreateImage(cvGetSize(_Img_R), _Img_R->depth, 1);
+	Img_L_Gary = cvCreateImage(cvGetSize(_Img_L), _Img_L->depth, 1);
+	Img_R_Gary = cvCreateImage(cvGetSize(_Img_R), _Img_R->depth, 1);
 
 	IplImage * _disp_Img_F = cvCreateImage(cvGetSize(_disp_Img), _Img_L->depth, 1);
 
@@ -135,7 +138,7 @@ void SpatiotemporalStereo(IplImage * _Img_L, IplImage * _Img_R,IplImage *_disp_I
 		}
 	}
 	*/
-	//BP(_Img_L, _Img_R, _disp_Img, ndisp);
+	BP(_Img_L, _Img_R, _disp_Img, ndisp);
 	//ICCV2010(_Img_L, _Img_R, _disp_Img, ndisp);
 	//WMode_F(_disp_Img, Img_L_Gary, _disp_Img_F, 3, 256);
 	//cvCopy(_disp_Img_F, _disp_Img, NULL);
@@ -171,7 +174,7 @@ int main(int argc, char **argv)
 	char ImgName_GT_R[50];
 	char ImgName_GT_Mask[50];
 
-	char *dataset = "temple";
+	char *dataset = "book";
 	int total_frame = 40;
 	char filename[30];
 	fstream fp;
@@ -182,7 +185,8 @@ int main(int argc, char **argv)
 	}
 
 	float total_error = 0;
-
+	IplImage * disp_Img;
+	IplImage * disp_Error_Img;
 	for (f = 1;f < 1+ total_frame;++f){
 		printf("Frame #%d\n", f);
 		sprintf(ImgName_L, "%s/L%04d.png", dataset, f);
@@ -199,12 +203,13 @@ int main(int argc, char **argv)
 		Img_GT = cvLoadImage(ImgName_GT, CV_LOAD_IMAGE_COLOR);
 		Img_GT_R = cvLoadImage(ImgName_GT_R, CV_LOAD_IMAGE_COLOR);
 		Img_GT_Mask = cvLoadImage(ImgName_GT, CV_LOAD_IMAGE_COLOR);
-		IplImage * disp_Img = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 1);
-		IplImage * disp_Error_Img = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 3);
 
+		disp_Img = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 1);
+		disp_Error_Img = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 3);
 		if (f == 1) {
+
 			for (int n = 0;n < 5;++n) {
-				Img_Disp_Pre[n] = cvCreateImage(cvGetSize(disp_Img), IPL_DEPTH_8U, 1);
+				Img_Disp_Pre[n] = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 1);
 				Img_L_Pre[n] = cvCreateImage(cvGetSize(Img_L), IPL_DEPTH_8U, 3);
 				Img_R_Pre[n] = cvCreateImage(cvGetSize(Img_R), IPL_DEPTH_8U, 3);
 			}
@@ -243,9 +248,12 @@ int main(int argc, char **argv)
 		cvCopy(Img_R, Img_R_Pre[0]);
 
 		cvReleaseImage(&disp_Img);
-		cvReleaseImage(&Img_L);
-		cvReleaseImage(&Img_R);
+		cvReleaseImage(&disp_Error_Img);
 	}
+
+	
+	cvReleaseImage(&Img_L);
+	cvReleaseImage(&Img_R);
 	total_error = total_error / (float)total_frame;
 	cout << "Total Error is" << total_error << endl;
 	fp << "Total Error is " << total_error << endl;
@@ -255,5 +263,4 @@ int main(int argc, char **argv)
 	scanf(" ");
 	return 0;
 }
-
 */

@@ -32,7 +32,7 @@
 
 //TODO: DEPTH
 #define DEPTH 64
-#define BSIZE 13
+#define BSIZE 6
 #define NSIZE 3
 #define JUMP 1
 #define START 1
@@ -43,7 +43,7 @@
 #define CLEAN 1000
 #define SPEED 1
 
-#define FILTERSIZE 7
+#define FILTERSIZE 3
 
 #define DISP_STEREO   0
 #define DISP_WINDOW   1
@@ -70,7 +70,7 @@
 using namespace std;
 using namespace cv;
 //=========  MasterDebug ===========//
-bool usrGrey = true;
+bool usrGrey = false;
 bool autoParsing = false;
 //========= Left or Right =========//
 bool isLeft = true;
@@ -105,7 +105,7 @@ string img_right = "right/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Dcb/"+(child_directory)+"temple/B17/BP/";
+string img_output_directory = "output/Dcb/"+(child_directory)+"temple/B6/BP/";
 //string img_discontinue_directory = "";
 string img_discontinue_directory = "input/Dcb/temple/occlution/";
 string img_compare_directory = "input/Dcb/temple/ground/";

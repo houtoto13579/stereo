@@ -12,9 +12,10 @@ extern IplImage * Img_Disp_Pre[5];
 extern IplImage * Img_L_Pre[5];
 extern IplImage * Img_R_Pre[5];
 extern int f;
+// extern IplImage * Img_L_Gary;
+// extern IplImage * Img_R_Gary;
 
 void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, int bsize) {
-	int f = 1;
 	int width = Left_Img->width;
 	int height = Left_Img->height;
 	int widthstep = Left_Img->widthStep;
@@ -53,15 +54,21 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 	float *Mes_D_Pixel;
 	float *Mes_Result_Pixel;
 
-	Cost_Pixel  = new float[ndisp];
+	Cost_Pixel          = new float[ndisp];
 	Temporal_Cost_Pixel = new float[ndisp];
-	Mes_L_Pixel = new float[ndisp];
-	Mes_R_Pixel = new float[ndisp];
-	Mes_U_Pixel = new float[ndisp];
-	Mes_D_Pixel = new float[ndisp];
-	Mes_Result_Pixel = new float[ndisp];
-	
-	#ifndef Tile_BP
+	Mes_L_Pixel         = new float[ndisp];
+	Mes_R_Pixel         = new float[ndisp];
+	Mes_U_Pixel         = new float[ndisp];
+	Mes_D_Pixel         = new float[ndisp];
+	Mes_Result_Pixel    = new float[ndisp];
+
+#ifdef Tile_BP
+
+
+
+#endif
+
+#ifndef Tile_BP
 	
 	Buf_size = ndisp*width*height;
 
@@ -76,20 +83,11 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 	for (int j = 0;j < height;++j) {
 		for (int i = 0;i < width;++i) {
 			for (int d = 0;d < ndisp;++d) {
-				int Buf_addr = (j*width + i)*ndisp + d;
-				if (f == 1) {
-					if (i < d)
-						Cost_Buf[Buf_addr] = 999;
-					else
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d);
-				}
-				else{
-					if (i < d)
-						Cost_Buf[Buf_addr] = 999;
-					else
-
-						Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d)+ Temporal_Cost(i, j, d, Left_Img);
-				}
+				int Buf_addr = (j*width + i)*ndisp + d;				
+				if (i < d)
+					Cost_Buf[Buf_addr] = 255;
+				else
+					Cost_Buf[Buf_addr] = ASW_Aggre(Img_L_Gary, Img_R_Gary, i, j, bsize, d);//+ Temporal_Cost(i, j, d, Left_Img);
 			}
 		}
 	}
@@ -376,17 +374,27 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 			}
 
 			disp_Img->imageData[addr_disp_Img] =disp_scale*BP_Disp_Deter(Mes_L_Pixel, Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, weight_A, weight_B,weight_C, weight_D, ndisp);
-			disp_Img->imageData[addr_disp_Img+1] = disp_Img->imageData[addr_disp_Img];
-			disp_Img->imageData[addr_disp_Img+2] = disp_Img->imageData[addr_disp_Img];
+			disp_Img->imageData[addr_disp_Img+1]=disp_Img->imageData[addr_disp_Img];
+			disp_Img->imageData[addr_disp_Img+2]=disp_Img->imageData[addr_disp_Img];
 		}
 	}
-	#endif
+
+
+#endif
 
 	delete[]Cost_Buf;
 	delete[]Mes_L_Buf;
 	delete[]Mes_R_Buf;
 	delete[]Mes_U_Buf;
 	delete[]Mes_D_Buf;
+	delete[]Cost_Pixel;
+
+	delete[]Temporal_Cost_Pixel;
+	delete[]Mes_L_Pixel;
+	delete[]Mes_R_Pixel;
+	delete[]Mes_U_Pixel;
+	delete[]Mes_D_Pixel;
+	delete[]Mes_Result_Pixel;
 
 }
 
@@ -494,6 +502,14 @@ void ICCV2010(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img, int n
 	float *Cost_Buf;
 	Cost_Buf = new float[Buf_size];
 
+
+	//Img_L_Gary = cvCreateImage(cvGetSize(Left_Img), Left_Img->depth, 1);
+	//Img_R_Gary = cvCreateImage(cvGetSize(Right_Img), Right_Img->depth, 1);
+
+
+	//cvCvtColor(Left_Img, Img_L_Gary, CV_RGB2GRAY);
+	//cvCvtColor(Right_Img, Img_R_Gary, CV_RGB2GRAY);
+
 	int disp_scale = 256 / ndisp;
 	for (int j = 0;j < height;++j) {
 		for (int i = 0;i < width;++i) {
@@ -502,12 +518,14 @@ void ICCV2010(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img, int n
 				if (i < d)
 					Cost_Buf[Buf_addr] = 999;
 				else {
-					Cost_Buf[Buf_addr] = ASW_Aggre(Left_Img, Right_Img, i, j, 17, d);
+					Cost_Buf[Buf_addr] = ASW_Aggre(Left_Img, Right_Img, i, j, 6, d);
+					//Cost_Buf[Buf_addr] = AD_Cost(Left_Img, Right_Img, i, j, d);
 					
 					for (int k = 1;k <= 4;++k) {
 						if (f - k > 0) {
 							float weight = exp(-(k*k) >> 3);
-							Cost_Buf[Buf_addr] += weight*ASW_Aggre(Img_L_Pre[k], Img_R_Pre[k], i, j, 17, d);
+							Cost_Buf[Buf_addr] += weight*ASW_Aggre(Img_L_Pre[k], Img_R_Pre[k], i, j, 6, d);
+							//Cost_Buf[Buf_addr] += weight* AD_Cost(Left_Img, Right_Img, i, j, d);
 						}
 						else
 							continue;
@@ -540,4 +558,6 @@ void ICCV2010(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img, int n
 
 		}
 	}
+
+	delete[]Cost_Buf;
 }

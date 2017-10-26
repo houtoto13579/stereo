@@ -21,14 +21,15 @@ int AD_Cost(IplImage * _Img_L, IplImage * _Img_R,int x,int y,int d) {
 
 	int x_r_ = x_ - d;
 	if (x_r_ < 0)
-		return 999;
+		return 255;
 
 	Addr_Img_L = AddrGet(x_,y_, WidthStep, nChans);
 	Addr_Img_R = AddrGet(x_r_, y_, WidthStep, nChans);
 
 	for (int C = 0;C < nChans;C++) {
-
 		Cost = +abs(_Img_L->imageData[Addr_Img_L]- _Img_R->imageData[Addr_Img_R]);
+		Addr_Img_L++;
+		Addr_Img_R++;
 	}
 	Cost = Cost / nChans;
 

@@ -9,7 +9,7 @@
 
 #define BP_PREROBUST 50 //original 50
 #define BP_FDF_CONSTANT 0.15 
-#define BP_FDF_CONSTANT_ASW 0.15 //best 0.1 
+#define BP_FDF_CONSTANT_ASW 0.1//best 0.1 
 #define BP_FDF_GAMMA 0.001 //best 0.01
 
 using namespace std;
