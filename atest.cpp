@@ -32,7 +32,7 @@
 
 //TODO: DEPTH
 #define DEPTH 64
-#define BSIZE 17
+#define BSIZE 13
 #define NSIZE 3
 #define JUMP 1
 #define START 1
@@ -43,7 +43,7 @@
 #define CLEAN 1000
 #define SPEED 1
 
-#define FILTERSIZE 5
+#define FILTERSIZE 7
 
 #define DISP_STEREO   0
 #define DISP_WINDOW   1
@@ -105,7 +105,7 @@ string img_right = "right/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Dcb/"+(child_directory)+"temple/B17/BP_opt(A0_15)/";
+string img_output_directory = "output/Dcb/"+(child_directory)+"temple/B17/BP/";
 //string img_discontinue_directory = "";
 string img_discontinue_directory = "input/Dcb/temple/occlution/";
 string img_compare_directory = "input/Dcb/temple/ground/";
@@ -158,7 +158,7 @@ string img_compare_directory = "ALSO, CHANGE THE CVLOADTYPE, FILENAME below as w
  * TEST_AFFINE					*   
  ******************************/
 
-int type = NEW_BP_BFRAME_OPT;
+int type = NEW_BP;
 
 //========== Error_Rate ===========//
 
@@ -659,7 +659,6 @@ int main(int argc, char** argv){
 						int colorint=22;
 						int dif=abs((imageD->imageData[i*imageD->widthStep+j])-(imageCP->imageData[i*imageCP->widthStep+j*(imageCP->nChannels)/3]));	
 						if(dif>compareTolerance){
-							
 							colorint=200;
 							imageD->imageData[i*imageD->widthStep+j] = 0;
 			          		imageD->imageData[i*imageD->widthStep+j+1] = 0;
