@@ -7,9 +7,9 @@
 #include "filter.h"
 #include "BP/Optimization.h"
 
-#define BP_PREROBUST 50 //original 50
-#define BP_FDF_CONSTANT 0.15 
-#define BP_FDF_CONSTANT_ASW 0.1//best 0.1 
+#define BP_PREROBUST 6 //original 50
+#define BP_FDF_CONSTANT 0.0025 
+#define BP_FDF_CONSTANT_ASW 0.0025//best 0.1 
 #define BP_FDF_GAMMA 0.001 //best 0.01
 
 using namespace std;
@@ -33,7 +33,7 @@ void new_bp(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImag
 	BP(Left_Img,Right_Img,disp_Img,depth,bsize);
 }
 
-void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImage *imageL_pre,IplImage *imageD_pre, IplImage *imageD_refine, int depth,bool window=false,int bsize=3,bool isLeft=true, int iter=1, int clean=10, int speed=1, int method=1, int nsize=5){
+void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img, IplImage *imageL_pre,IplImage *imageD_pre, IplImage *imageD_refine, int depth,bool window=false,int bsize=3,bool isLeft=true, int iter=1, int clean=10, int speed=1, int method=1, int nsize=5,float BP_alpha = 0.01, float BP_gamma=0.001, float BP_robust = 10){
 	//====================================AD_Cost
 	//============Cost Refill=============
 	//====================================
@@ -120,7 +120,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 	int NSIZE = nsize;
 	float alpha= 0.2;
 	float gamma = 10;
-	int preRobust = BP_PREROBUST;
+	int preRobust = BP_robust;
 	//Testing Two Method Avg!!!
 	double preWeightSum=0;
 	double preWeightCount=0;
@@ -174,7 +174,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					if(preCount==0)
 						preWeight = 0;
 					else{
-						preWeight = FDF(preDifSum,preCount,BP_FDF_CONSTANT,BP_FDF_GAMMA);
+						preWeight = FDF(preDifSum,preCount,BP_alpha,BP_gamma);
 						preWeightCount++;
 					}
 				}
@@ -183,7 +183,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					if(weight_wall==0)
 						preWeight = 0;
 					else{
-						preWeight = FDF(momentum,weight_wall,BP_FDF_CONSTANT_ASW,BP_FDF_GAMMA);
+						preWeight = FDF(momentum,weight_wall,BP_alpha,BP_gamma);
 						preWeightCount++;
 					}
 				}
