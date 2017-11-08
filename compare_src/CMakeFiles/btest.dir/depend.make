@@ -5,7 +5,6 @@ CMakeFiles/btest.dir/btest.cpp.o: btest.cpp
 CMakeFiles/btest.dir/btest.cpp.o: test.h
 CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv/cv.h
 CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv/cxcore.h
-CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv/highgui.h
 CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv2/calib3d.hpp
 CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv2/calib3d/calib3d_c.h
 CMakeFiles/btest.dir/btest.cpp.o: /usr/local/include/opencv2/core.hpp
