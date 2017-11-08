@@ -1,0 +1,3 @@
+/home/hoobie/stereo/compare_src/CMakeFiles/edit_cache.dir
+/home/hoobie/stereo/compare_src/CMakeFiles/rebuild_cache.dir
+/home/hoobie/stereo/compare_src/CMakeFiles/btest.dir
