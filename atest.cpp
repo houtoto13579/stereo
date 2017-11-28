@@ -31,6 +31,7 @@
 #define WIDTH 1000
 
 //TODO: DEPTH
+//
 #define DEPTH 64
 #define BSIZE 6
 #define NSIZE 3
@@ -67,6 +68,8 @@
 #define TEST_OPTICAL 102
 #define TEST_AFFINE  101
 
+int type = NEW_BP_BFRAME_OPT;
+
 using namespace std;
 using namespace cv;
 //=========  MasterDebug ===========//
@@ -80,16 +83,17 @@ bool refineUseFilter = false;
 //=========== Compare =============//
 bool Compare = true;
 int compareTolerance = 1*(256/DEPTH);
-bool deleteLeftDiscont = true; //true while make left BSIZE 
+bool deleteLeftDiscont = false; //true while make left BSIZE 
 //=========  Directory ============//
 bool outputOrig=true;
 //======== BP_gamma_alpha =========//
-float BP_alpha = 0.01;//weight
-float BP_gamma = 0.001;//sensitivity
+float BP_alpha = 0.15;//weight
+float BP_gamma = 0;//sensitivity
 float BP_robust = 6; //truncation
 //TODO: Directory should change accordingly
 //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
-string category = "tunnel/";
+
+string category = "tanks/";
 string noise = "";
 
 string img_directory = "input/Dcb/"+category;
@@ -98,7 +102,8 @@ string img_right = "right"+noise+"/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Dcb_paper_nf/"+category+"a0_01_T6/";
+string img_output_parent_directory = "output/Dcb_paper_final/"+category;
+string img_output_directory = img_output_parent_directory+"0.15/0/";
 //string img_discontinue_directory = "";
 string img_discontinue_directory = "input/Dcb/"+category+"occlution/";
 string img_compare_directory = "input/Dcb/"+category+"ground/";
@@ -111,7 +116,7 @@ string img_right = "right/";
 
 string img_name = "";
 string child_directory = (isLeft)?img_left:img_right;
-string img_output_directory = "output/Tsukuba_paper2/"+(child_directory)+"new_test/";
+string img_output_directory = "output/Tsukuba_paper_71/BMVC/";
 string img_discontinue_directory = "input/Tsukuba/discontinuity_maps/";
 string img_compare_directory = "input/Tsukuba/disparity_maps/";
 */
@@ -162,7 +167,6 @@ string img_compare_directory = "ALSO, CHANGE THE CVLOADTYPE, FILENAME below as w
  * TEST_AFFINE				*   
  ******************************/
 
-int type = NEW_BP_BFRAME_OPT;
 
 //========== Error_Rate ===========//
 
@@ -178,6 +182,15 @@ bool Test_using_tsukuba = false;
 //======== Main Function ==========//
 	
 int main(int argc, char** argv){
+	if(argc==3){
+		cerr<<"user customization"<<endl;
+		string a = argv[1];
+		string g = argv[2];
+		BP_alpha = strtof((a).c_str(),0);
+		BP_gamma = strtof((g).c_str(),0);
+		img_output_directory = img_output_parent_directory+a+"/"+g+"/";
+	}
+
 	//cerr<<"Using: CV version: "<<CV_MAJOR_VERSION<<endl;
 	cout<<"=== Disparity Checking ==="<<endl;
 	cout<<"Output:"<<img_output_directory<<endl;
@@ -224,21 +237,18 @@ int main(int argc, char** argv){
 
 		//TODO: Left Right File Name
 		//for leftname=rightname
-		/*
-		string img_Lname=img_name;
-		string img_Rname=img_name;
-		*/
+		
+		//string img_Lname=img_name;
+		//string img_Rname=img_name;
+		
 		//for dcb
 		
 		string img_Lname= "L"+img_name;
 		string img_Rname= "R"+img_name;
+		
+		//
 		string fileL = img_directory + img_left  + img_Lname + ".png";
 		string fileR = img_directory + img_right  + img_Rname + ".png";
-		
-		if(Test_using_tsukuba){
-			fileL="imL.png";
-			fileR="imR.png";
-		}
 			
 		char filename1[1024];
 		char filename2[1024];
@@ -247,21 +257,22 @@ int main(int argc, char** argv){
 		// Image Size: 1000x669
 		IplImage *imageL, *imageR, *imageD; //type of image
 		IplImage *imageD_refine=0;
+		
 		//TODO: Need to change from LOAD_IMAGE_UNCHANGED <-> COLOR
  	 	//Tsukuba
-		
+		/*
 		imageL = cvLoadImage(filename1,CV_LOAD_IMAGE_COLOR); // CVload type
  	 	imageR = cvLoadImage(filename2,CV_LOAD_IMAGE_COLOR); // CVload type
  	 	imageD = cvLoadImage(filename2,CV_LOAD_IMAGE_COLOR); // CVload type
 		imageD_refine = cvLoadImage(filename2,CV_LOAD_IMAGE_COLOR);
-		
+		*/
 		//Kitti or Nagoya
-		/*
+		
  	 	imageL = cvLoadImage(filename1,CV_LOAD_IMAGE_UNCHANGED); // CVload type
  	 	imageR = cvLoadImage(filename2,CV_LOAD_IMAGE_UNCHANGED); // CVload type
  	 	imageD = cvLoadImage(filename2,CV_LOAD_IMAGE_UNCHANGED); // CVload type
 		imageD_refine = cvLoadImage(filename2,CV_LOAD_IMAGE_UNCHANGED);
-		*/
+		
 
 		if(!imageL){
 			cout<<"Error: Couldn't open the image L file.\n";
@@ -423,10 +434,12 @@ int main(int argc, char** argv){
 			cvSaveImage(outputfilename, imageD_refine);
 		if(Compare){       
 			IplImage *imageDC, *imageCP; //type of image
-			/*
-			string fileDC = img_discontinue_directory + "left/"+ img_name + ".png";
-			string fileCP = img_compare_directory + "left/" + img_name + ".png";
-			*/
+			
+			//TODO: 
+			// for Tsukuba
+			//string fileDC = img_discontinue_directory + "left/"+ img_name + ".png";
+			//string fileCP = img_compare_directory + "left/" + img_name + ".png";
+			
 			// for DCB
 			string fileDC = img_discontinue_directory + "TL_MASK"+ img_name + ".png";
 			string fileCP = img_compare_directory + "left/TL" + img_name + ".png";

@@ -261,7 +261,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 		}
 		//=======================From Right to Left===================
 		for (int j = 0;j < height;++j) {
-			for (int i = width - 1;i >= 1;--i) {
+			for (int i = width - 1;i >= 0;--i) {
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -305,7 +305,8 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					weight_C = WeiGet(color_p, color_q, 5);
 				}
 				BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if (i==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i - 1)*ndisp + d;
 
@@ -373,7 +374,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 			}
 		}
 		for (int i = 0;i < width;++i) {
-			for (int j = height - 1;j >= 1;--j) {
+			for (int j = height - 1;j >= 0;--j) {
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -416,9 +417,10 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 					color_q = (unsigned char)Img_L_Gary->imageData[addr_r];
 					weight_C = WeiGet(color_p, color_q, 5);
 				}
-
+				
 				BP_Update(Mes_D_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if(j==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = ((j - 1)*width + i)*ndisp + d;
 
@@ -431,7 +433,7 @@ void new_bp_frame_optical(IplImage *Left_Img, IplImage *Right_Img, IplImage *dis
 	
 	}
 	for (int i = 0;i < width;++i) {
-		for (int j = height - 1;j >= 1;--j) {
+		for (int j = height - 1;j >= 0;--j) {
 			for (int d = 0;d < ndisp;++d) {
 				int addr_buf = (j*width + i)*ndisp + d;
 				Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -681,7 +683,7 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 		}
 		//=======================From Right to Left===================
 		for (int j = 0;j < height;++j) {
-			for (int i = width - 1;i >= 1;--i) {
+			for (int i = width - 1;i >= 0;--i) {
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -725,7 +727,8 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 					weight_C = WeiGet(color_p, color_q, 5);
 				}
 				BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if(i==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i - 1)*ndisp + d;
 
@@ -793,7 +796,7 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 			}
 		}
 		for (int i = 0;i < width;++i) {
-			for (int j = height - 1;j >= 1;--j) {
+			for (int j = height - 1;j >= 0;--j) {
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -838,7 +841,8 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 				}
 
 				BP_Update(Mes_D_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if(j==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = ((j - 1)*width + i)*ndisp + d;
 
@@ -851,7 +855,7 @@ void new_bp_temporal(IplImage *Left_Img, IplImage *Right_Img, IplImage *disp_Img
 	
 	}
 	for (int i = 0;i < width;++i) {
-		for (int j = height - 1;j >= 1;--j) {
+		for (int j = height - 1;j >= 0;--j) {
 			for (int d = 0;d < ndisp;++d) {
 				int addr_buf = (j*width + i)*ndisp + d;
 				Cost_Pixel[d] = Cost_Buf[addr_buf];

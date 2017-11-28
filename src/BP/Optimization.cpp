@@ -77,6 +77,12 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 	Mes_R_Buf = new float[Buf_size];
 	Mes_U_Buf = new float[Buf_size];
 	Mes_D_Buf = new float[Buf_size];
+  for(int kk=0; kk<Buf_size; kk++){
+    Mes_L_Buf[kk]=0;
+    Mes_R_Buf[kk]=0;
+    Mes_U_Buf[kk]=0;
+    Mes_D_Buf[kk]=0;
+  }
 	//====================================
 	//============Cost Refill=============
 	//====================================
@@ -148,7 +154,7 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 		}
 		//=======================From Right to Left===================
 		for (int j = 0;j < height;++j) {
-			for (int i = width - 1;i >= 1;--i) {
+			for (int i = width - 1;i >= 0;--i) {
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -192,7 +198,8 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 					weight_C = WeiGet(color_p, color_q, 5);
 				}
 				BP_Update(Mes_R_Pixel, Mes_U_Pixel, Mes_D_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if (i==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i - 1)*ndisp + d;
 
@@ -261,7 +268,7 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 		}
 
 		for (int i = 0;i < width;++i) {
-			for (int j = height - 1;j >= 1;--j) {
+			for (int j = height - 1;j >= 0;--j){
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = (j*width + i)*ndisp + d;
 					Cost_Pixel[d] = Cost_Buf[addr_buf];
@@ -306,7 +313,8 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 				}
 
 				BP_Update(Mes_D_Pixel, Mes_L_Pixel, Mes_R_Pixel, Cost_Pixel, Mes_Result_Pixel, weight_A, weight_B, weight_C, lamda, ndisp);
-
+				if (j==0)
+					continue;
 				for (int d = 0;d < ndisp;++d) {
 					int addr_buf = ((j - 1)*width + i)*ndisp + d;
 
@@ -318,7 +326,7 @@ void BP(IplImage* Left_Img, IplImage* Right_Img, IplImage* disp_Img,int ndisp, i
 	}
 
 	for (int i = 0;i < width;++i) {
-		for (int j = height - 1;j >= 1;--j) {
+		for (int j = height - 1;j >= 0;--j) {
 			for (int d = 0;d < ndisp;++d) {
 				int addr_buf = (j*width + i)*ndisp + d;
 				Cost_Pixel[d] = Cost_Buf[addr_buf];
